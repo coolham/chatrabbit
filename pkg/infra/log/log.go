@@ -2,6 +2,7 @@ package log
 
 import (
 	"chatrabbit/config"
+	"chatrabbit/config/common"
 	"fmt"
 	"path"
 	"runtime"
@@ -77,8 +78,8 @@ func SetLogFormatter(formatter logrus.Formatter) {
 }
 
 func ConfigLogger() {
-	logPath := config.GetString("debug.log.filepath")
-	fileName := config.GetString("debug.log.filename")
+	logPath := config.GetString(common.LOG_FILE_PATH)
+	fileName := config.GetString(common.LOG_FILE_NAME)
 	configLocalFilesystemLogger(logPath, fileName, 30*24*time.Hour, 7*24*time.Hour)
 }
 

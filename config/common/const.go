@@ -16,7 +16,9 @@ const (
 
 const (
 	// log
-	LOG_LEVEL = "log.level"
+	LOG_LEVEL     = "log.level"
+	LOG_FILE_PATH = "log.filepath"
+	LOG_FILE_NAME = "log.filename"
 	// server
 	SERVER_HOST = "server.host"
 	SERVER_PORT = "server.port"

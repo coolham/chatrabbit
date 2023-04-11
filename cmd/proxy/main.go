@@ -33,6 +33,7 @@ func InitModule() {
 }
 
 func main() {
+	log.ConfigLogger()
 	log.Info("start proxy server")
 
 	configFile := flag.String("config", "", "specify config file name")
