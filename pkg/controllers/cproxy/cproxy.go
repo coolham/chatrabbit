@@ -23,10 +23,21 @@ type ProxyController struct {
 	Sessions *sessions.Sessions
 }
 
+func IsFilterHeader(key string) bool {
+
+	switch key {
+	case "X-Real-Ip":
+		return true
+	case "X-Forwarded-For":
+		return true
+	}
+	return false
+}
+
 func (c *ProxyController) Get() mvc.Result {
 	// 获取请求URL
 	reqUrl := c.Ctx.FullRequestURI()
-	log.Infof("proxy %s request, %s", c.Ctx.Method(), reqUrl)
+	log.Infof("new proxy %s request, %s", c.Ctx.Method(), reqUrl)
 
 	queryString := c.Ctx.Request().URL.Query()
 
@@ -62,8 +73,11 @@ func (c *ProxyController) Get() mvc.Result {
 		}
 	}
 
-	// 传递所有Header
+	// 传递Header
 	for key, values := range c.Ctx.Request().Header {
+		if IsFilterHeader(key) {
+			continue
+		}
 		for _, value := range values {
 			log.Infof("request header, %s=%s", key, value)
 			req.Header.Set(key, value)
@@ -116,7 +130,7 @@ func (c *ProxyController) Get() mvc.Result {
 func (c *ProxyController) Post() mvc.Result {
 	// 获取请求URL
 	reqUrl := c.Ctx.FullRequestURI()
-	log.Infof("proxy %s request, %s", c.Ctx.Method(), reqUrl)
+	log.Infof("new proxy %s request, %s", c.Ctx.Method(), reqUrl)
 
 	queryString := c.Ctx.Request().URL.Query()
 
@@ -153,9 +167,13 @@ func (c *ProxyController) Post() mvc.Result {
 		}
 	}
 
-	// 传递所有Header
+	// 传递Header
 	for key, values := range c.Ctx.Request().Header {
+		if IsFilterHeader(key) {
+			continue
+		}
 		for _, value := range values {
+			log.Infof("request header, %s=%s", key, value)
 			req.Header.Set(key, value)
 		}
 	}
