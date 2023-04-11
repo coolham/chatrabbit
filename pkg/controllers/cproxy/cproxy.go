@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
@@ -79,11 +80,12 @@ func (c *ProxyController) Get() mvc.Result {
 			continue
 		}
 		for _, value := range values {
-			log.Infof("request header, %s=%s", key, value)
+			// log.Infof("request header, %s=%s", key, value)
 			req.Header.Set(key, value)
 		}
 	}
 	// 发送请求并获取响应
+	startTime := time.Now()
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -104,9 +106,11 @@ func (c *ProxyController) Get() mvc.Result {
 		}
 	}
 	defer resp.Body.Close()
+	finishedTime := time.Now()
+	elapseSeconds := finishedTime.Sub(startTime).Seconds()
 
 	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
-	log.Infof("proxy response, code=%d, url=%s", resp.StatusCode, newUrl)
+	log.Infof("proxy response, code=%d, elapse=%d, url=%s", resp.StatusCode, elapseSeconds, newUrl)
 
 	// 设置响应Header
 	for key, values := range resp.Header {
@@ -173,7 +177,7 @@ func (c *ProxyController) Post() mvc.Result {
 			continue
 		}
 		for _, value := range values {
-			log.Infof("request header, %s=%s", key, value)
+			// log.Infof("request header, %s=%s", key, value)
 			req.Header.Set(key, value)
 		}
 	}
@@ -189,6 +193,7 @@ func (c *ProxyController) Post() mvc.Result {
 	req.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
 
 	// 发送请求并获取响应
+	startTime := time.Now()
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -209,9 +214,11 @@ func (c *ProxyController) Post() mvc.Result {
 		}
 	}
 	defer resp.Body.Close()
+	finishedTime := time.Now()
+	elapseSeconds := finishedTime.Sub(startTime).Seconds()
 
 	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
-	log.Infof("proxy response, code=%d, url=%s", resp.StatusCode, newUrl)
+	log.Infof("proxy response, code=%d, elapse=%d, url=%s", resp.StatusCode, elapseSeconds, newUrl)
 
 	// 设置响应Header
 	for key, values := range resp.Header {
