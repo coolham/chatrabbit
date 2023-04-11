@@ -1,0 +1,33 @@
+project:
+  env: "DEV"
+
+server:
+  host: "127.0.0.1"
+  port: 8000
+
+proxy:
+  url: "https://aiproxy.aitodoom.xyz"
+
+log:
+  level: "info"
+  filepath: "./log"
+  filename: "chat"
+
+
+database:    
+  mysql:
+    host: "192.168.3.100"
+    port: 49154
+    username: "root"
+    password: "admin"
+    db_name: "chat_rabbit"
+  redis:
+    address: "192.168.3.100:49155"
+    password: ""
+    db_option: 6
+    prefix: "p"
+    max_idle: 200
+    pool_size: 64
+    max_retries: 3
+    idle_timeout: 0
+
