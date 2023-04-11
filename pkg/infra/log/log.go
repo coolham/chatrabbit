@@ -16,8 +16,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-//type Fields map[string]interface{}
-
 type Logger struct {
 	Log *logrus.Logger
 }
@@ -32,7 +30,7 @@ func Init(logLevel string) {
 
 	logger.SetLevel(level)
 	logger.Formatter = &logrus.JSONFormatter{
-		//TimestampFormat: time.RFC3339Nano,
+		TimestampFormat: time.RFC3339Nano,
 	}
 	// logger.Formatter = &logrus.TextFormatter{
 	// 	TimestampFormat: "2006-01-02 15:04:05",
@@ -53,7 +51,7 @@ func CreateLogger(logLevel string) (*Logger, error) {
 	}
 	logger.SetLevel(level)
 	logger.Formatter = &logrus.JSONFormatter{
-		//TimestampFormat: time.RFC3339Nano,
+		TimestampFormat: time.RFC3339Nano,
 	}
 	// logger.Formatter = &logrus.TextFormatter{
 	// 	TimestampFormat: "2006-01-02 15:04:05",

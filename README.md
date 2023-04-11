@@ -10,3 +10,7 @@ We support:
 * ChatGPT
 * GPT-3, GPT-4
 
+## setup
+
+copy conf/config.yaml.example to conf/config.yaml
+

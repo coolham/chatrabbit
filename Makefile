@@ -1,5 +1,5 @@
 PROJECT_NAME := "chatrabbit"
-# PKG := "gitlab.com/marvincaspar/$(PROJECT_NAME)"
+PKG := "github.com/coolham/$(PROJECT_NAME)"
 MAIN_FILE := "cmd/proxy/main.go"
 PKG_LIST := $(shell go list ./... )
 GO_FILES := $(shell find . -name '*.go' | grep -v _test.go)
