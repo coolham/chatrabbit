@@ -53,7 +53,7 @@ run:
 	./bin/$(PROJECT_NAME)
 	
 build: dep ## Build the binary file
-	@go build -i -o ./bin/$(PROJECT_NAME) ./$(MAIN_FILE)
+	@go build -o ./bin/$(PROJECT_NAME) ./$(MAIN_FILE)
 
 clean: ## Remove previous build
 	@rm -f ./bin
