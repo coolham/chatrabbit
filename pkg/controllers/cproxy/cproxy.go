@@ -106,7 +106,7 @@ func (c *ProxyController) Get() mvc.Result {
 	defer resp.Body.Close()
 
 	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
-	log.Infof("proxy response, code=%d", resp.StatusCode)
+	log.Infof("proxy response, code=%d, url=%s", resp.StatusCode, newUrl)
 
 	// 设置响应Header
 	for key, values := range resp.Header {
@@ -211,7 +211,7 @@ func (c *ProxyController) Post() mvc.Result {
 	defer resp.Body.Close()
 
 	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
-	log.Infof("proxy response, code=%d", resp.StatusCode)
+	log.Infof("proxy response, code=%d, url=%s", resp.StatusCode, newUrl)
 
 	// 设置响应Header
 	for key, values := range resp.Header {
