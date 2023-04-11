@@ -110,12 +110,12 @@ func (c *ProxyController) Get() mvc.Result {
 	elapseSeconds := finishedTime.Sub(startTime).Seconds()
 
 	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
-	log.Infof("proxy response, code=%d, elapse=%d, url=%s", resp.StatusCode, elapseSeconds, newUrl)
+	log.Infof("proxy response, code=%d, elapse=%.1f, url=%s", resp.StatusCode, elapseSeconds, newUrl)
 
 	// 设置响应Header
 	for key, values := range resp.Header {
 		for _, value := range values {
-			log.Infof("set response header, %s=%s", key, value)
+			// log.Infof("set response header, %s=%s", key, value)
 			c.Ctx.Header(key, value)
 		}
 	}
@@ -218,7 +218,7 @@ func (c *ProxyController) Post() mvc.Result {
 	elapseSeconds := finishedTime.Sub(startTime).Seconds()
 
 	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
-	log.Infof("proxy response, code=%d, elapse=%d, url=%s", resp.StatusCode, elapseSeconds, newUrl)
+	log.Infof("proxy response, code=%d, elapse=%.1f, url=%s", resp.StatusCode, elapseSeconds, newUrl)
 
 	// 设置响应Header
 	for key, values := range resp.Header {
