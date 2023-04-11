@@ -1,6 +1,6 @@
-PROJECT_NAME := "mercury_pay"
+PROJECT_NAME := "chatrabbit"
 # PKG := "gitlab.com/marvincaspar/$(PROJECT_NAME)"
-MAIN_FILE := "cmd/server/main.go"
+MAIN_FILE := "cmd/proxy/main.go"
 PKG_LIST := $(shell go list ./... )
 GO_FILES := $(shell find . -name '*.go' | grep -v _test.go)
 # https://github.com/golangci/awesome-go-linters
