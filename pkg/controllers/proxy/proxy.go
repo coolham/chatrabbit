@@ -1,11 +1,12 @@
-package cproxy
+package proxy
 
 import (
 	"bytes"
+	"chatrabbit/api/response"
 	"chatrabbit/config"
 	"chatrabbit/config/common"
 	"chatrabbit/pkg/infra/log"
-	"chatrabbit/pkg/services/sproxy"
+	"chatrabbit/pkg/services/proxyserv"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,10 +21,11 @@ import (
 
 type ProxyController struct {
 	Ctx      iris.Context
-	Service  sproxy.ProxyService
+	Service  proxyserv.ProxyService
 	Sessions *sessions.Sessions
 }
 
+// the header that we don't want to pass to the backend server.
 func IsFilterHeader(key string) bool {
 
 	switch key {
@@ -35,10 +37,12 @@ func IsFilterHeader(key string) bool {
 	return false
 }
 
+// Get is the proxy handler
 func (c *ProxyController) Get() mvc.Result {
 	// 获取请求URL
 	reqUrl := c.Ctx.FullRequestURI()
 	log.Infof("new proxy %s request, %s", c.Ctx.Method(), reqUrl)
+	c.Service.Start()
 
 	queryString := c.Ctx.Request().URL.Query()
 
@@ -68,10 +72,7 @@ func (c *ProxyController) Get() mvc.Result {
 	req, err := http.NewRequest(c.Ctx.Method(), newUrl, c.Ctx.Request().Body)
 	if err != nil {
 		log.Errorf("new request error, %v", err)
-		return mvc.Response{
-			Code: http.StatusInternalServerError,
-			Err:  err,
-		}
+		return response.ErrCodeResp(err)
 	}
 
 	// 传递Header
@@ -122,6 +123,7 @@ func (c *ProxyController) Get() mvc.Result {
 
 	// 设置响应状态
 	c.Ctx.StatusCode(resp.StatusCode)
+	c.Service.Stop()
 
 	// 输出响应Body
 	return mvc.Response{
@@ -131,6 +133,7 @@ func (c *ProxyController) Get() mvc.Result {
 	}
 }
 
+// Post is the proxy handler
 func (c *ProxyController) Post() mvc.Result {
 	// 获取请求URL
 	reqUrl := c.Ctx.FullRequestURI()

@@ -4,7 +4,7 @@ import (
 	"chatrabbit/config"
 	"chatrabbit/config/common"
 	"chatrabbit/pkg/infra/log"
-	"chatrabbit/pkg/routers"
+	"chatrabbit/web"
 	"flag"
 	"fmt"
 	"os"
@@ -19,7 +19,7 @@ func newApp() *iris.Application {
 	logLevel := config.GetString(common.LOG_LEVEL)
 	app.Logger().SetLevel(logLevel)
 
-	routers.RegistProxyRouter(app)
+	web.SetupRoutes(app)
 
 	// Iris log
 	f, _ := os.Create("iris.log")

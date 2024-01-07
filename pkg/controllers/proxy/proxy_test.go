@@ -1,7 +1,7 @@
-package cproxy
+package proxy
 
 import (
-	"chatrabbit/pkg/services/sproxy"
+	"chatrabbit/pkg/services/proxyserv"
 	"context"
 	"fmt"
 	"testing"
@@ -19,7 +19,7 @@ func newApp() *iris.Application {
 }
 
 func proxyApp(app *mvc.Application) {
-	service := sproxy.NewProxyService()
+	service := proxyserv.NewProxyService()
 	ctx := context.Background()
 	app.Register(ctx, service)
 	app.Handle(new(ProxyController))

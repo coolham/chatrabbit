@@ -1,8 +1,8 @@
-package routers
+package web
 
 import (
-	"chatrabbit/pkg/controllers/cproxy"
-	"chatrabbit/pkg/services/sproxy"
+	"chatrabbit/pkg/controllers/proxy"
+	"chatrabbit/pkg/services/proxyserv"
 	"context"
 
 	"github.com/kataras/iris/v12"
@@ -10,7 +10,7 @@ import (
 )
 
 // ProxyRouter 注册路由
-func RegistProxyRouter(app *iris.Application) {
+func SetupRoutes(app *iris.Application) {
 
 	// API
 	proxyApi := app.Party("/proxy")
@@ -21,8 +21,8 @@ func RegistProxyRouter(app *iris.Application) {
 
 func proxyApp(app *mvc.Application) {
 
-	service := sproxy.NewProxyService()
+	service := proxyserv.NewProxyService()
 	ctx := context.Background()
 	app.Register(ctx, service)
-	app.Handle(new(cproxy.ProxyController))
+	app.Handle(new(proxy.ProxyController))
 }
