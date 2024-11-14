@@ -1,14 +1,14 @@
 package proxy
 
 import (
-	"bytes"
 	"chatrabbit/api/response"
 	"chatrabbit/config"
 	"chatrabbit/config/common"
 	"chatrabbit/pkg/infra/log"
 	"chatrabbit/pkg/services/proxyserv"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -25,32 +25,48 @@ type ProxyController struct {
 	Sessions *sessions.Sessions
 }
 
-// the header that we don't want to pass to the backend server.
+// IsFilterHeader checks if a header should be filtered out
 func IsFilterHeader(key string) bool {
-
-	switch key {
-	case "X-Real-Ip":
-		return true
-	case "X-Forwarded-For":
+	switch strings.ToLower(key) {
+	case "x-real-ip", "x-forwarded-for", "user-agent", "referer", "cookie":
 		return true
 	}
 	return false
 }
 
-// Get is the proxy handler
-func (c *ProxyController) Get() mvc.Result {
+// 获取服务器的IP地址
+func getServerIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		log.Errorf("failed to get server IP, %v", err)
+		return "unknown"
+	}
+
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return "unknown"
+}
+
+// handleRequest processes the proxy request
+func (c *ProxyController) handleRequest(method string) mvc.Result {
+	configServ, err := config.GetConfig()
+	if err != nil {
+		log.Errorf("get config serve error, %v", err)
+		return response.ErrCodeResp(err)
+	}
+
 	// 获取请求URL
 	reqUrl := c.Ctx.FullRequestURI()
-	log.Infof("new proxy %s request, %s", c.Ctx.Method(), reqUrl)
-	c.Service.Start()
+	log.Infof("new proxy %s request, %s", method, reqUrl)
 
 	queryString := c.Ctx.Request().URL.Query()
-
 	path := c.Ctx.Path()
 	log.Infof("req path: %s", path)
-
-	newPath := strings.Replace(path, "/proxy", "", 1)
-	log.Infof("new path:%s", newPath)
 
 	// 将GET参数转换为url参数字符串
 	var arr []string
@@ -62,14 +78,14 @@ func (c *ProxyController) Get() mvc.Result {
 	newQuery := strings.Join(arr, "&")
 
 	// 拼接url
-	proxyUrl := config.GetString(common.PROXY_URL) + newPath
+	proxyUrl := configServ.GetString(common.PROXY_URL) + path
 	baseUrl, _ := url.Parse(proxyUrl)
 	baseUrl.RawQuery = newQuery
 	newUrl := baseUrl.String()
 	log.Infof("new url, %s", newUrl)
 
 	// 创建新的请求
-	req, err := http.NewRequest(c.Ctx.Method(), newUrl, c.Ctx.Request().Body)
+	req, err := http.NewRequest(method, newUrl, c.Ctx.Request().Body)
 	if err != nil {
 		log.Errorf("new request error, %v", err)
 		return response.ErrCodeResp(err)
@@ -81,13 +97,23 @@ func (c *ProxyController) Get() mvc.Result {
 			continue
 		}
 		for _, value := range values {
-			// log.Infof("request header, %s=%s", key, value)
 			req.Header.Set(key, value)
 		}
 	}
+
+	// 替换敏感头信息
+	serverIP := getServerIP()
+	req.Header.Set("X-Forwarded-For", serverIP)
+	req.Header.Set("User-Agent", c.Ctx.GetHeader("User-Agent"))
+
 	// 发送请求并获取响应
 	startTime := time.Now()
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 30 * time.Second, // 设置超时
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // 禁用自动重定向
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Errorf("send request error, %v", err)
@@ -98,7 +124,7 @@ func (c *ProxyController) Get() mvc.Result {
 	}
 
 	// 获取响应Body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Errorf("read response body error, %v", err)
 		return mvc.Response{
@@ -110,20 +136,17 @@ func (c *ProxyController) Get() mvc.Result {
 	finishedTime := time.Now()
 	elapseSeconds := finishedTime.Sub(startTime).Seconds()
 
-	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
 	log.Infof("proxy response, code=%d, elapse=%.1f, url=%s", resp.StatusCode, elapseSeconds, newUrl)
 
 	// 设置响应Header
 	for key, values := range resp.Header {
 		for _, value := range values {
-			// log.Infof("set response header, %s=%s", key, value)
 			c.Ctx.Header(key, value)
 		}
 	}
 
 	// 设置响应状态
 	c.Ctx.StatusCode(resp.StatusCode)
-	c.Service.Stop()
 
 	// 输出响应Body
 	return mvc.Response{
@@ -133,110 +156,37 @@ func (c *ProxyController) Get() mvc.Result {
 	}
 }
 
+// Get is the proxy handler
+func (c *ProxyController) Get() mvc.Result {
+	return c.handleRequest("GET")
+}
+
 // Post is the proxy handler
 func (c *ProxyController) Post() mvc.Result {
-	// 获取请求URL
-	reqUrl := c.Ctx.FullRequestURI()
-	log.Infof("new proxy %s request, %s", c.Ctx.Method(), reqUrl)
+	return c.handleRequest("POST")
+}
 
-	queryString := c.Ctx.Request().URL.Query()
+// Put is the proxy handler
+func (c *ProxyController) Put() mvc.Result {
+	return c.handleRequest("PUT")
+}
 
-	path := c.Ctx.Path()
-	log.Infof("req path: %s", path)
+// Delete is the proxy handler
+func (c *ProxyController) Delete() mvc.Result {
+	return c.handleRequest("DELETE")
+}
 
-	newPath := strings.Replace(path, "/proxy", "", 1)
-	log.Infof("new path:%s", newPath)
+// Patch is the proxy handler
+func (c *ProxyController) Patch() mvc.Result {
+	return c.handleRequest("PATCH")
+}
 
-	// 将GET参数转换为url参数字符串
-	var arr []string
-	for k, v := range queryString {
-		for _, value := range v {
-			arr = append(arr, fmt.Sprintf("%v=%v", k, value))
-		}
-	}
-	newQuery := strings.Join(arr, "&")
-	fmt.Println("new query:", newQuery)
+// Head is the proxy handler
+func (c *ProxyController) Head() mvc.Result {
+	return c.handleRequest("HEAD")
+}
 
-	// 拼接url
-	proxyUrl := config.GetString(common.PROXY_URL) + newPath
-	baseUrl, _ := url.Parse(proxyUrl)
-	baseUrl.RawQuery = newQuery
-	newUrl := baseUrl.String()
-	log.Infof("new url, %s", newUrl)
-
-	// 创建新的请求
-	req, err := http.NewRequest(c.Ctx.Method(), newUrl, c.Ctx.Request().Body)
-	if err != nil {
-		log.Errorf("new request error, %v", err)
-		return mvc.Response{
-			Code: http.StatusInternalServerError,
-			Err:  err,
-		}
-	}
-
-	// 传递Header
-	for key, values := range c.Ctx.Request().Header {
-		if IsFilterHeader(key) {
-			continue
-		}
-		for _, value := range values {
-			// log.Infof("request header, %s=%s", key, value)
-			req.Header.Set(key, value)
-		}
-	}
-	// 处理POST请求
-	reqBody, err := ioutil.ReadAll(c.Ctx.Request().Body)
-	if err != nil {
-		log.Errorf("read request body error, %v", err)
-		return mvc.Response{
-			Code: http.StatusInternalServerError,
-			Err:  err,
-		}
-	}
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
-
-	// 发送请求并获取响应
-	startTime := time.Now()
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Errorf("send request error, %v", err)
-		return mvc.Response{
-			Code: http.StatusInternalServerError,
-			Err:  err,
-		}
-	}
-
-	// 获取响应Body
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("read response body error, %v", err)
-		return mvc.Response{
-			Code: http.StatusInternalServerError,
-			Err:  err,
-		}
-	}
-	defer resp.Body.Close()
-	finishedTime := time.Now()
-	elapseSeconds := finishedTime.Sub(startTime).Seconds()
-
-	// log.Infof("proxy response, code=%d, body=%s", resp.StatusCode, string(body))
-	log.Infof("proxy response, code=%d, elapse=%.1f, url=%s", resp.StatusCode, elapseSeconds, newUrl)
-
-	// 设置响应Header
-	for key, values := range resp.Header {
-		for _, value := range values {
-			c.Ctx.Header(key, value)
-		}
-	}
-
-	// 设置响应状态
-	c.Ctx.StatusCode(resp.StatusCode)
-
-	// 输出响应Body
-	return mvc.Response{
-		Code:        resp.StatusCode,
-		ContentType: "application/json",
-		Content:     body,
-	}
+// Options is the proxy handler
+func (c *ProxyController) Options() mvc.Result {
+	return c.handleRequest("OPTIONS")
 }

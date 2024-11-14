@@ -13,7 +13,7 @@ import (
 func SetupRoutes(app *iris.Application) {
 
 	// API
-	proxyApi := app.Party("/proxy")
+	proxyApi := app.Party("/")
 	{
 		mvc.Configure(proxyApi.Party("/{any:path}"), proxyApp)
 	}

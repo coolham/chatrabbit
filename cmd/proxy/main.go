@@ -15,8 +15,12 @@ import (
 func newApp() *iris.Application {
 	app := iris.New()
 
+	configServe, err := config.GetConfig()
+	if err != nil {
+		panic(err)
+	}
 	// iris log level
-	logLevel := config.GetString(common.LOG_LEVEL)
+	logLevel := configServe.GetString(common.LOG_LEVEL)
 	app.Logger().SetLevel(logLevel)
 
 	web.SetupRoutes(app)
@@ -33,25 +37,31 @@ func InitModule() {
 }
 
 func main() {
-	log.ConfigLogger()
-	log.Info("start proxy server")
+	// configFile := flag.String("config", "", "specify config file name")
+	// help := flag.Bool("h", false, "help")
+	// flag.Parse()
 
-	configFile := flag.String("config", "", "specify config file name")
-	help := flag.Bool("h", false, "help")
-	flag.Parse()
-
-	if *help {
-		flag.Usage()
-		os.Exit(0)
-	}
-	ret := config.InitConfig(*configFile)
-	if !ret {
+	// if *help {
+	// 	flag.Usage()
+	// 	os.Exit(0)
+	// }
+	_, err := config.GetConfig()
+	if err != nil {
+		fmt.Printf("init config failed: %v\n", err)
 		flag.Usage()
 		os.Exit(-1)
 	}
+
+	log.ConfigLogger()
+	log.Info("start proxy server")
+
 	InitModule()
 
-	logLevel := config.GetString(common.LOG_LEVEL)
+	configServe, err := config.GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	logLevel := configServe.GetString(common.LOG_LEVEL)
 	// project log level
 	log.SetLogLevel(logLevel)
 
@@ -64,7 +74,7 @@ func main() {
 		Charset:                           "UTF-8",
 	}
 	irisConfig := iris.WithConfiguration(c)
-	addr := fmt.Sprintf("%s:%s", config.GetString(common.SERVER_HOST), config.GetString(common.SERVER_PORT))
+	addr := fmt.Sprintf("%s:%s", configServe.GetString(common.SERVER_HOST), configServe.GetString(common.SERVER_PORT))
 	log.Infof("server run at %v", addr)
 	app.Run(iris.Addr(addr), irisConfig)
 }

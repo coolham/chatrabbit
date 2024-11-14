@@ -76,8 +76,12 @@ func SetLogFormatter(formatter logrus.Formatter) {
 }
 
 func ConfigLogger() {
-	logPath := config.GetString(common.LOG_FILE_PATH)
-	fileName := config.GetString(common.LOG_FILE_NAME)
+	configServe, err := config.GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	logPath := configServe.GetString(common.LOG_FILE_PATH)
+	fileName := configServe.GetString(common.LOG_FILE_NAME)
 	configLocalFilesystemLogger(logPath, fileName, 30*24*time.Hour, 7*24*time.Hour)
 }
 

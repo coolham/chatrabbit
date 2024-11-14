@@ -1,117 +1,88 @@
 package config
 
 import (
-	"chatrabbit/config/common"
 	"fmt"
-	"log"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
-// type ConfigServe struct {
-// }
+type Config interface {
+	Get(key string) interface{}
+	GetInt(key string) int
+	GetFloat64(key string) float64
+	GetBool(key string) bool
+	GetString(key string) string
+	GetStringMap(key string) map[string]interface{}
+	GetStringSlice(key string) []string
+	SetString(key string, value string)
+	SetDefault(key string, value interface{})
+}
 
 var (
-	viperServe *ViperConfig
-	configFile string
+	configInstance Config
+	lock           sync.Mutex
 )
 
-// 配置文件地址
-var lock sync.Mutex
+// 获取项目根目录
+func getProjectRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get working directory: %v", err)
+	}
 
-func GetConfigServe() *ViperConfig {
-	if nil != viperServe {
-		return viperServe
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("project root not found")
+		}
+		dir = parent
+	}
+}
+
+// 获取配置实例
+func GetConfig() (Config, error) {
+	if configInstance == nil {
+		// 在不持有锁的情况下调用 InitConfig
+		if err := InitConfig(""); err != nil {
+			return nil, err
+		}
 	}
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	InitConfig(configFile)
-	return viperServe
+	return configInstance, nil
 }
 
-// 获取配置文件
-func InitConfig(cFile string) bool {
-	if cFile != "" {
-		configFile = cFile
-		fmt.Printf("user configFile=%s", configFile)
-		ok := LoadConfig(configFile)
-		if !ok {
-			fmt.Printf("load config file=%s failed\n", configFile)
-		} else {
-			return ok
+// 显式初始化函数
+func InitConfig(file string) error {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if configInstance != nil {
+		return nil
+	}
+
+	if file == "" {
+		file = os.Getenv("RABBIT_CONFIG_FILE")
+		if file == "" {
+			root, err := getProjectRoot()
+			if err != nil {
+				return err
+			}
+			file = filepath.Join(root, "conf", "config.yaml")
 		}
 	}
 
-	configFile := os.Getenv(common.CONFIGFILE)
-	if len(configFile) == 0 {
-		msg := fmt.Errorf("can not find env %s, please check it", common.CONFIGFILE)
-		panic(msg)
+	// check file exists
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		return fmt.Errorf("config file does not exist: %s", file)
 	}
-
-	log.Printf("configFile=%s", configFile)
-	ok := LoadConfig(configFile)
-	if !ok {
-		panic("load config file failed")
-	}
-	return ok
-}
-
-func LoadConfig(configFile string) bool {
-	fileInfo, err := os.Stat(configFile)
-	if err != nil {
-		fmt.Printf("can not find config file: %s\n", configFile)
-		return false
-	}
-
-	if fileInfo.IsDir() {
-		fmt.Printf("can not read config file: %s\n", configFile)
-		return false
-	}
-	viperServe = NewViperConfig(configFile)
-	return viperServe != nil
-}
-
-func GetInt(key string) int {
-	return GetConfigServe().GetInt(key)
-}
-
-func GetBool(key string) bool {
-	return GetConfigServe().GetBool(key)
-}
-
-func GetFloat64(key string) float64 {
-	return GetConfigServe().GetFloat64(key)
-}
-
-func GetString(key string) string {
-	return GetConfigServe().GetString(key)
-}
-
-func GetStringMap(key string) map[string]interface{} {
-	return GetConfigServe().GetStringMap(key)
-}
-
-func GetStringSlice(key string) []string {
-	return GetConfigServe().GetStringSlice(key)
-}
-
-func SetDefault(key string, value interface{}) {
-	GetConfigServe().SetDefault(key, value)
-}
-
-func GetIntWithDefault(key string, v int) int {
-	GetConfigServe().SetDefault(key, v)
-	return GetConfigServe().GetInt(key)
-}
-
-func GetStringWithDefault(key string, v string) string {
-	GetConfigServe().SetDefault(key, v)
-	return GetConfigServe().GetString(key)
-}
-
-func GetBoolWithDefault(key string, v bool) bool {
-	GetConfigServe().SetDefault(key, v)
-	return GetConfigServe().GetBool(key)
+	configInstance = NewViperConfig(file)
+	return nil
 }
