@@ -52,9 +52,8 @@ func getServerIP() string {
 }
 
 // 获取目标域名和协议
-func getTargetDomainAndScheme(configServ config.Config, host string) (string, string, error) {
+func getTargetDomainAndScheme(configServ config.Config, host string, scheme string) (string, string, error) {
     log.Infof("prepare target domain, host=%s", host)
-
 
 	domainMappingsInterface := configServ.GetStringMap("proxy.domain_mappings")
 	domainMappings := make(map[string]string)
@@ -102,10 +101,9 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 		log.Errorf("failed to parse request URL, %v", err)
 		return response.ErrCodeResp(err)
 	}
-        log.Infof("parsed url=%s", parsedUrl)
 
 	// 获取目标域名和协议
-	targetDomain, targetScheme, err := getTargetDomainAndScheme(configServ, parsedUrl.Host)
+	targetDomain, targetScheme, err := getTargetDomainAndScheme(configServ, parsedUrl.Host, parsedUrl.Scheme)
 	if err != nil {
 		return response.ErrCodeResp(err)
 	}
@@ -131,6 +129,11 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 		for _, value := range values {
 			req.Header.Set(key, value)
 		}
+	}
+
+	// 确保 Authorization 头部被传递
+	if authHeader := c.Ctx.GetHeader("Authorization"); authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
 	}
 
 	// 替换敏感头信息
