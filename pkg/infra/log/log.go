@@ -4,6 +4,7 @@ import (
 	"chatrabbit/config"
 	"chatrabbit/config/common"
 	"fmt"
+	"os"
 	"path"
 	"runtime"
 	"strings"
@@ -82,6 +83,16 @@ func ConfigLogger() {
 	}
 	logPath := configServe.GetString(common.LOG_FILE_PATH)
 	fileName := configServe.GetString(common.LOG_FILE_NAME)
+
+	// 检查并创建日志目录
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		err := os.MkdirAll(logPath, os.ModePerm)
+		if err != nil {
+			logger.Errorf("failed to create log directory: %v", err)
+			panic(err)
+		}
+	}
+
 	configLocalFilesystemLogger(logPath, fileName, 30*24*time.Hour, 7*24*time.Hour)
 }
 

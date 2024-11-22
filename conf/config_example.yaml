@@ -15,7 +15,7 @@ proxy:
 
 log:
   level: "debug"
-  filepath: "log"
+  filepath: "logs"
   filename: "chat_proxy"
 
 database:    
