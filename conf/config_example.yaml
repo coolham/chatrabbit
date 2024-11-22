@@ -3,16 +3,20 @@ project:
 
 server:
   host: "127.0.0.1"
-  port: 8000
+  port: 8004
 
 proxy:
-  url: "https://aiproxy.aitodoom.xyz"
+  domain_mappings:
+    "grok.superlang.top": "api.x.ai"
+    "chatgpt.superlang.top": "api.openai.com"
+    "test.superlang.top": "api.x.ai"
+  default_domain: "api.x.ai"
+  default_scheme: "https"  #
 
 log:
-  level: "info"
-  filepath: "./log"
-  filename: "chat"
-
+  level: "debug"
+  filepath: "log"
+  filename: "chat_proxy"
 
 database:    
   mysql:

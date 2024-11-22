@@ -3,7 +3,6 @@ package proxy
 import (
 	"chatrabbit/api/response"
 	"chatrabbit/config"
-	"chatrabbit/config/common"
 	"chatrabbit/pkg/infra/log"
 	"chatrabbit/pkg/services/proxyserv"
 	"fmt"
@@ -52,6 +51,47 @@ func getServerIP() string {
 	return "unknown"
 }
 
+// 获取目标域名和协议
+func getTargetDomainAndScheme(configServ config.Config, host string) (string, string, error) {
+	// 去掉端口号
+	host, _, err := net.SplitHostPort(host)
+	if err != nil {
+		// 如果没有端口号，SplitHostPort 会返回错误，这时直接使用原始 host
+		if addrErr, ok := err.(*net.AddrError); ok && addrErr.Err == "missing port in address" {
+			// host 保持不变，无需赋值
+		} else {
+			log.Errorf("failed to split host and port, %v", err)
+			return "", "", fmt.Errorf("failed to split host and port, %v", err)
+		}
+	}
+
+	domainMappingsInterface := configServ.GetStringMap("proxy.domain_mappings")
+	domainMappings := make(map[string]string)
+
+	for key, value := range domainMappingsInterface {
+		if strValue, ok := value.(string); ok {
+			domainMappings[key] = strValue
+		} else {
+			log.Errorf("invalid domain mapping for key: %s", key)
+			return "", "", fmt.Errorf("invalid domain mapping for key: %s", key)
+		}
+	}
+
+	targetDomain, exists := domainMappings[host]
+	if !exists {
+		log.Errorf("no mapping found for domain: %s", host)
+		return "", "", fmt.Errorf("no mapping found for domain: %s", host)
+	}
+
+	// 使用配置中的默认协议
+	targetScheme := configServ.GetString("proxy.default_scheme")
+	if targetScheme == "" {
+		targetScheme = "https" // 默认将 HTTP 转换为 HTTPS
+	}
+
+	return targetDomain, targetScheme, nil
+}
+
 // handleRequest processes the proxy request
 func (c *ProxyController) handleRequest(method string) mvc.Result {
 	configServ, err := config.GetConfig()
@@ -64,24 +104,23 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 	reqUrl := c.Ctx.FullRequestURI()
 	log.Infof("new proxy %s request, %s", method, reqUrl)
 
-	queryString := c.Ctx.Request().URL.Query()
-	path := c.Ctx.Path()
-	log.Infof("req path: %s", path)
-
-	// 将GET参数转换为url参数字符串
-	var arr []string
-	for k, v := range queryString {
-		for _, value := range v {
-			arr = append(arr, fmt.Sprintf("%v=%v", k, value))
-		}
+	// 解析请求URL
+	parsedUrl, err := url.Parse(reqUrl)
+	if err != nil {
+		log.Errorf("failed to parse request URL, %v", err)
+		return response.ErrCodeResp(err)
 	}
-	newQuery := strings.Join(arr, "&")
 
-	// 拼接url
-	proxyUrl := configServ.GetString(common.PROXY_URL) + path
-	baseUrl, _ := url.Parse(proxyUrl)
-	baseUrl.RawQuery = newQuery
-	newUrl := baseUrl.String()
+	// 获取目标域名和协议
+	targetDomain, targetScheme, err := getTargetDomainAndScheme(configServ, parsedUrl.Host)
+	if err != nil {
+		return response.ErrCodeResp(err)
+	}
+
+	// 替换域名和协议
+	parsedUrl.Host = targetDomain
+	parsedUrl.Scheme = targetScheme
+	newUrl := parsedUrl.String()
 	log.Infof("new url, %s", newUrl)
 
 	// 创建新的请求
