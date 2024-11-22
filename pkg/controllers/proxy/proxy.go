@@ -53,7 +53,7 @@ func getServerIP() string {
 
 // 获取目标域名和协议
 func getTargetDomainAndScheme(configServ config.Config, host string, scheme string) (string, string, error) {
-    log.Infof("prepare target domain, host=%s", host)
+	log.Infof("prepare target domain, host=%s", host)
 
 	domainMappingsInterface := configServ.GetStringMap("proxy.domain_mappings")
 	domainMappings := make(map[string]string)
@@ -134,6 +134,7 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 	// 确保 Authorization 头部被传递
 	if authHeader := c.Ctx.GetHeader("Authorization"); authHeader != "" {
 		req.Header.Set("Authorization", authHeader)
+		log.Debugf("set Authorization header, %s", authHeader)
 	}
 
 	// 替换敏感头信息
