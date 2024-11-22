@@ -53,17 +53,8 @@ func getServerIP() string {
 
 // 获取目标域名和协议
 func getTargetDomainAndScheme(configServ config.Config, host string) (string, string, error) {
-	// 去掉端口号
-	host, _, err := net.SplitHostPort(host)
-	if err != nil {
-		// 如果没有端口号，SplitHostPort 会返回错误，这时直接使用原始 host
-		if addrErr, ok := err.(*net.AddrError); ok && addrErr.Err == "missing port in address" {
-			// host 保持不变，无需赋值
-		} else {
-			log.Errorf("failed to split host and port, %v", err)
-			return "", "", fmt.Errorf("failed to split host and port, %v", err)
-		}
-	}
+    log.Infof("prepare target domain, host=%s", host)
+
 
 	domainMappingsInterface := configServ.GetStringMap("proxy.domain_mappings")
 	domainMappings := make(map[string]string)
@@ -71,6 +62,7 @@ func getTargetDomainAndScheme(configServ config.Config, host string) (string, st
 	for key, value := range domainMappingsInterface {
 		if strValue, ok := value.(string); ok {
 			domainMappings[key] = strValue
+			log.Debugf("map key=%s, v=%s", key, strValue)
 		} else {
 			log.Errorf("invalid domain mapping for key: %s", key)
 			return "", "", fmt.Errorf("invalid domain mapping for key: %s", key)
@@ -110,6 +102,7 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 		log.Errorf("failed to parse request URL, %v", err)
 		return response.ErrCodeResp(err)
 	}
+        log.Infof("parsed url=%s", parsedUrl)
 
 	// 获取目标域名和协议
 	targetDomain, targetScheme, err := getTargetDomainAndScheme(configServ, parsedUrl.Host)
