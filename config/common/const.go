@@ -12,6 +12,8 @@ const (
 	LOCALENV = "local"
 	// CONFIGFILE
 	CONFIGFILE = "CHAT_RABBIT_CONF"
+	// VERSION
+	VERSION = "0.1.0"
 )
 
 const (

@@ -5,12 +5,9 @@ import (
 	"chatrabbit/config"
 	"chatrabbit/pkg/infra/log"
 	"chatrabbit/pkg/services/proxyserv"
-	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/kataras/iris/v12"
@@ -22,65 +19,6 @@ type ProxyController struct {
 	Ctx      iris.Context
 	Service  proxyserv.ProxyService
 	Sessions *sessions.Sessions
-}
-
-// IsFilterHeader checks if a header should be filtered out
-func IsFilterHeader(key string) bool {
-	switch strings.ToLower(key) {
-	case "x-real-ip", "x-forwarded-for", "user-agent", "referer", "cookie":
-		return true
-	}
-	return false
-}
-
-// 获取服务器的IP地址
-func getServerIP() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		log.Errorf("failed to get server IP, %v", err)
-		return "unknown"
-	}
-
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-	return "unknown"
-}
-
-// 获取目标域名和协议
-func getTargetDomainAndScheme(configServ config.Config, host string, scheme string) (string, string, error) {
-	log.Infof("prepare target domain, host=%s", host)
-
-	domainMappingsInterface := configServ.GetStringMap("proxy.domain_mappings")
-	domainMappings := make(map[string]string)
-
-	for key, value := range domainMappingsInterface {
-		if strValue, ok := value.(string); ok {
-			domainMappings[key] = strValue
-			log.Debugf("map key=%s, v=%s", key, strValue)
-		} else {
-			log.Errorf("invalid domain mapping for key: %s", key)
-			return "", "", fmt.Errorf("invalid domain mapping for key: %s", key)
-		}
-	}
-
-	targetDomain, exists := domainMappings[host]
-	if !exists {
-		log.Errorf("no mapping found for domain: %s", host)
-		return "", "", fmt.Errorf("no mapping found for domain: %s", host)
-	}
-
-	// 使用配置中的默认协议
-	targetScheme := configServ.GetString("proxy.default_scheme")
-	if targetScheme == "" {
-		targetScheme = "https" // 默认将 HTTP 转换为 HTTPS
-	}
-
-	return targetDomain, targetScheme, nil
 }
 
 // handleRequest processes the proxy request
@@ -114,6 +52,15 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 	newUrl := parsedUrl.String()
 	log.Infof("new url, %s", newUrl)
 
+	// 提取 Authorization 头部并解析 token
+	_, err = extractAuthorizationToken(c.Ctx)
+	if err != nil {
+		return mvc.Response{
+			Code: http.StatusUnauthorized,
+			Err:  err,
+		}
+	}
+
 	// 创建新的请求
 	req, err := http.NewRequest(method, newUrl, c.Ctx.Request().Body)
 	if err != nil {
@@ -132,10 +79,7 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 	}
 
 	// 确保 Authorization 头部被传递
-	if authHeader := c.Ctx.GetHeader("Authorization"); authHeader != "" {
-		req.Header.Set("Authorization", authHeader)
-		log.Debugf("set Authorization header, %s", authHeader)
-	}
+	req.Header.Set("Authorization", c.Ctx.GetHeader("Authorization"))
 
 	// 替换敏感头信息
 	serverIP := getServerIP()

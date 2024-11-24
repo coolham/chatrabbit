@@ -53,7 +53,9 @@ func main() {
 	}
 
 	log.ConfigLogger()
-	log.Info("start proxy server")
+	log.Info("##################################################")
+	log.Infof("start proxy server, version=%s", common.VERSION)
+	log.Info("##################################################")
 
 	InitModule()
 

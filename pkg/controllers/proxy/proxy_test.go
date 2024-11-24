@@ -32,7 +32,7 @@ func proxyApp(app *mvc.Application) {
 
 func TestMain(m *testing.M) {
 	// 设置 CONFIGFILE 环境变量
-	os.Setenv("RABBIT_CONFIG_FILE", "../../../conf/config.yaml.example")
+	os.Setenv("RABBIT_CONFIG_FILE", "../../../conf/config_example.yaml")
 
 	// 初始化配置
 	err := config.InitConfig("")
