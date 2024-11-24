@@ -172,6 +172,11 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 	finishedTime := time.Now()
 	elapseSeconds := finishedTime.Sub(startTime).Seconds()
 
+	// 检查响应状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Errorf("proxy response error, code=%d, url=%s, request=%s, response=%s", resp.StatusCode, newUrl, reqUrl, string(body))
+	}
+
 	log.Infof("proxy response, code=%d, elapse=%.1f, url=%s", resp.StatusCode, elapseSeconds, newUrl)
 
 	// 设置响应Header

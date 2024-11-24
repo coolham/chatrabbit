@@ -17,5 +17,5 @@
 dist/
 .vscode
 conf/config.yaml
-cmd/proxy/*.log
-log
+**/*.log
+

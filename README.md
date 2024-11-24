@@ -27,3 +27,13 @@ go run cmd/proxy/main.go -config conf/config.yaml
         "CHAT_RABBIT_CONF": "../../conf/config.yaml"
     }
 ```
+
+
+## Setup
+
+### nginx
+
+add " client_max_body_size 10M;" to nginx.conf
+
+
+
