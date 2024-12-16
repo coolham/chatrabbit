@@ -33,16 +33,23 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 	reqUrl := c.Ctx.Request().URL.String()
 	log.Infof("new proxy %s request, %s", method, reqUrl)
 
+	// 获取主机和协议
+	host := c.Ctx.Request().Host
+	scheme := "http"
+	if c.Ctx.Request().TLS != nil {
+		scheme = "https"
+	}
+
+	// 获取目标域名和协议
+	targetDomain, targetScheme, err := getTargetDomainAndScheme(configServ, host, scheme)
+	if err != nil {
+		return response.ErrCodeResp(err)
+	}
+
 	// 解析请求URL
 	parsedUrl, err := url.Parse(reqUrl)
 	if err != nil {
 		log.Errorf("failed to parse request URL, %v", err)
-		return response.ErrCodeResp(err)
-	}
-
-	// 获取目标域名和协议
-	targetDomain, targetScheme, err := getTargetDomainAndScheme(configServ, parsedUrl.Host, parsedUrl.Scheme)
-	if err != nil {
 		return response.ErrCodeResp(err)
 	}
 
