@@ -29,8 +29,8 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 		return response.ErrCodeResp(err)
 	}
 
-	// 获取请求URL
-	reqUrl := c.Ctx.FullRequestURI()
+	// 获取请求URL，包括查询参数
+	reqUrl := c.Ctx.Request().URL.String()
 	log.Infof("new proxy %s request, %s", method, reqUrl)
 
 	// 解析请求URL
