@@ -49,6 +49,7 @@ func (c *ProxyController) handleRequest(method string) mvc.Result {
 	// 替换域名和协议
 	parsedUrl.Host = targetDomain
 	parsedUrl.Scheme = targetScheme
+	// 保留原始的查询参数
 	newUrl := parsedUrl.String()
 	log.Infof("new url, %s", newUrl)
 
